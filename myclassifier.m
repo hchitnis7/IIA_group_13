@@ -7,9 +7,7 @@ function S = myclassifier(im)
 %   - Always 1x4
 %   - Three-digit CAPTCHA is padded with leading zero
 
-    % -------------------------------------------------
-    % Persistent model loading (loaded once)
-    % -------------------------------------------------
+    % model loading (loaded once)
     persistent svmModels isLoaded
 
     if isempty(isLoaded)
@@ -18,9 +16,9 @@ function S = myclassifier(im)
         isLoaded = true;
     end
 
-    % -------------------------------------------------
+
     % Feature extraction
-    % -------------------------------------------------
+
     [X4, ~, info] = Full_FeatureExtraction(im);
 
     % Safety fallback
@@ -29,18 +27,18 @@ function S = myclassifier(im)
         return;
     end
 
-    % -------------------------------------------------
+
     % Slot-wise prediction
-    % -------------------------------------------------
+
     S = zeros(1,4);
 
     for s = 1:4
         S(s) = predict(svmModels{s}, X4(s,:));
     end
 
-    % -------------------------------------------------
+
     % Enforce leading-zero convention
-    % -------------------------------------------------
+
     % If it is a 3-digit CAPTCHA, slot-1 must be zero
     if info.nDigits == 3
         S(1) = 0;

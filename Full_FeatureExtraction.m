@@ -15,7 +15,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
     end
 
 
-    % ------------1) Preprocess------------
+    % ------------Preprocess------------
 
     [BWfull, ~, info] = preprocessCaptcha(I);
 
@@ -27,7 +27,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
     end
 
 
-    % -------------2) Bounding box + nDigits------------
+    % -------------Bounding box + nDigits------------
 
     [yIdx, xIdx] = find(BWfull);
 
@@ -56,7 +56,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
     BWseg = BWfull(y1:y2, x1:x2);
     BWseg = bwareaopen(BWseg, params.cropAreaOpen);
 
-    % ------------3) Equal-width slicing---------------
+    % ------------Equal-width slicing---------------
     Wseg = size(BWseg,2);
     edges = round(linspace(1, Wseg+1, nDigits+1));
     digitPatches = cell(1,nDigits);
@@ -67,7 +67,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
     end
 
 
-    % ------------4) Map into fixed slots------------
+    % ------------Map into fixed slots------------
 
     patches4 = cell(1, params.maxSlots);
 
@@ -75,7 +75,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
         patches4(1:params.maxSlots) = digitPatches;
     else
         if params.forceLeading0
-            patches4{1} = [];  % forced leading zero
+            patches4{1} = [];  % leading zero for 3 digit captchas
             patches4(2:4) = digitPatches;
         else
             patches4(1:3) = digitPatches;
@@ -83,7 +83,7 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
     end
 
 
-    % ------------5) HOG extraction------------
+    % ------------HOG extraction------------
 
     featLen = get_featLen(params);
     X4 = zeros(params.maxSlots, featLen);

@@ -85,7 +85,7 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
     BWfull = false(size(BW));
     BWfull(cat(1, CC.PixelIdxList{keepIdx})) = true;
 
-    %% 9) Final close
+    %% Final close
     BWfull = imclose(BWfull, strel('disk', params.closeDisk));
 
     %% 10) Projection-based deskew
@@ -125,7 +125,7 @@ function params = default_preproc_params()
     params.minDigitArea  = 200;
 
     % Deskew (projection-based)
-    params.skew_angleRange = 15;    % degrees
+    params.skew_angleRange = 45;    % degrees
     params.skew_angleStep  = 0.25;  % degrees
 
     % Digit slicing / layout
