@@ -1,10 +1,7 @@
 tic
-
 data = importdata('Train/labels.txt');
-
 img_nrs = data(:,1);
 true_labels = data(:,2:end);
-
 my_labels = zeros(size(true_labels));
 N = size(img_nrs,1);
 
@@ -15,7 +12,6 @@ for n = 1:N
 end
 
 correct = sum(abs(true_labels - my_labels),2) == 0;
-
 fprintf('\n\nAccuracy:\n');
 fprintf('%f\n\n', mean(correct));
 
