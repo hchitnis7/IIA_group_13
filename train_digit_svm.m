@@ -67,16 +67,36 @@ for i = 1:N
     Y(i,:) = Yall(i,:);
 end
 
+% 
+% % -------------------------------------------------
+% % Train SVMs (one per slot)
+% % -------------------------------------------------
+% fprintf('\nTraining SVM classifiers...\n');
+% 
+% t = templateSVM( ...
+%     'KernelFunction','rbf', ...
+%     'KernelScale','auto', ...
+%     'Standardize',true);
+% 
+% svmModels = cell(1,nSlots);
+% 
+% for s = 1:nSlots
+%     fprintf('  Training slot %d...\n', s);
+% 
+%     Xs = squeeze(X(:,s,:));   % NxD
+%     Ys = Y(:,s);              % Nx1
+% 
+%     svmModels{s} = fitcecoc( ...
+%         Xs, Ys, ...
+%         'Learners', t, ...
+%         'Coding','onevsall', ...
+%         'ClassNames', 0:9);
+% end
 
 % -------------------------------------------------
-% Train SVMs (one per slot)
+% Train SVMs (one per slot) — Polynomial Kernel
 % -------------------------------------------------
-fprintf('\nTraining SVM classifiers...\n');
-
-t = templateSVM( ...
-    'KernelFunction','rbf', ...
-    'KernelScale','auto', ...
-    'Standardize',true);
+fprintf('\nTraining SVM classifiers (Polynomial kernel)...\n');
 
 svmModels = cell(1,nSlots);
 
@@ -86,16 +106,41 @@ for s = 1:nSlots
     Xs = squeeze(X(:,s,:));   % NxD
     Ys = Y(:,s);              % Nx1
 
+    % Remove empty / failed samples
+    valid = any(Xs,2);
+    Xs = Xs(valid,:);
+    Ys = Ys(valid);
+
+    % Fixed SVM template
+    t = templateSVM( ...
+        'KernelFunction', 'polynomial', ...
+        'Standardize', true);
+
+    % Hyperparameter optimization options
+    opts = struct( ...
+        'Optimizer', 'bayesopt', ...
+        'ShowPlots', false, ...
+        'Verbose', 1, ...
+        'KFold', 5, ...
+        'MaxObjectiveEvaluations', 15);
+
     svmModels{s} = fitcecoc( ...
         Xs, Ys, ...
         'Learners', t, ...
-        'Coding','onevsall', ...
-        'ClassNames', 0:9);
+        'Coding', 'onevsall', ...
+        'ClassNames', 0:9, ...
+        'OptimizeHyperparameters', { ...
+            'BoxConstraint', ...
+            'KernelScale', ...
+            'PolynomialOrder'}, ...
+        'HyperparameterOptimizationOptions', opts);
 end
+
+
 
 % -------------------------------------------------
 % Save trained model
 % -------------------------------------------------
-save('digit_svm_model.mat','svmModels');
+save('digit_svm_model_poly.mat','svmModels');
 
-fprintf('\nTraining complete. Model saved to digit_svm_model.mat\n');
+fprintf('\nTraining complete. Model saved \n');

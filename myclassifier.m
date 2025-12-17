@@ -11,7 +11,7 @@ function S = myclassifier(im)
     persistent svmModels isLoaded
 
     if isempty(isLoaded)
-        modelData = load('digit_svm_model.mat','svmModels');
+        modelData = load('digit_svm_model_poly.mat','svmModels');
         svmModels = modelData.svmModels;
         isLoaded = true;
     end
