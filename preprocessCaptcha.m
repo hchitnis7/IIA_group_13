@@ -37,17 +37,17 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
 
     peaks = [pA; pA_sym];
 
-    %% 3b) Second symmetric FFT peak (optional)
-    v = pA - [cx cy];
-    [pB, pB_sym, found2] = find_second_pair_on_line( ...
-        Mag, cx, cy, v, params.r_min, params.r_max, peaks);
-
-    if found2
-        peaks = [peaks; pB; pB_sym];
-    end
-
-    info.fftPeaks = peaks;
-    info.nFFTpeaks = size(peaks,1);
+    % %% 3b) Second symmetric FFT peak (optional)
+    % v = pA - [cx cy];
+    % [pB, pB_sym, found2] = find_second_pair_on_line( ...
+    %     Mag, cx, cy, v, params.r_min, params.r_max, peaks);
+    % 
+    % if found2
+    %     peaks = [peaks; pB; pB_sym];
+    % end
+    % 
+    % info.fftPeaks = peaks;
+    % info.nFFTpeaks = size(peaks,1);
 
     %% 4) Apply notch filter
     mask = true(H,W);
@@ -80,7 +80,7 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
         return;
     end
 
-    keepIdx = find([stats.Area] >= params.minDigitArea);
+    keepIdx = [stats.Area] >= params.minDigitArea;
 
     BWfull = false(size(BW));
     BWfull(cat(1, CC.PixelIdxList{keepIdx})) = true;
@@ -114,7 +114,7 @@ function params = default_preproc_params()
     params.notchRadius = 2;
 
     % Smoothing
-    params.sigma = 0.17;
+    params.sigma = 0.25;
 
     % Morphology
     params.erodeDisk  = 3;
@@ -125,8 +125,8 @@ function params = default_preproc_params()
     params.minDigitArea  = 200;
 
     % Deskew (projection-based)
-    params.skew_angleRange = 45;    % degrees
-    params.skew_angleStep  = 0.25;  % degrees
+    params.skew_angleRange = 50;    % degrees
+    params.skew_angleStep  = 1;  % degrees
 
     % Digit slicing / layout
     params.maxSlots        = 4;      % always output 4 slots
@@ -209,29 +209,60 @@ function [p2, p2sym, found] = find_second_pair_on_line( ...
     found = true;
 end
 
+function angleDeg = estimate_skew_projection(BW, ~)
+% FAST PCA-BASED DESKEW (no brute-force rotation)
 
-function angleDeg = estimate_skew_projection(BW, params)
-% ESTIMATE_SKEW_PROJECTION
-% CAPTCHA-robust skew estimation using projection variance
+    [y, x] = find(BW);
 
-    angleRange = params.skew_angleRange;
-    angleStep  = params.skew_angleStep;
-
-    angles = -angleRange:angleStep:angleRange;
-    scores = zeros(size(angles));
-
-    BW = logical(BW);
-
-    for k = 1:numel(angles)
-        BWrot = imrotate(BW, angles(k), 'bilinear', 'crop');
-
-        % Horizontal projection profile
-        proj = sum(BWrot, 2);
-
-        % Variance measures alignment sharpness
-        scores(k) = var(proj);
+    if numel(x) < 50
+        angleDeg = 0;
+        return;
     end
 
-    [~, idx] = max(scores);
-    angleDeg = angles(idx);
+    % Center coordinates
+    x = x - mean(x);
+    y = y - mean(y);
+
+    % Covariance matrix
+    C = cov(x, y);
+
+    % Principal direction
+    [V, D] = eig(C);
+
+    [~, idx] = max(diag(D));
+    v = V(:,idx);
+
+    % Angle in degrees
+    angleDeg = atan2d(v(2), v(1));
+
+    % Convert to rotation angle
+    angleDeg = angleDeg - 180 ;
 end
+
+
+% 
+% function angleDeg = estimate_skew_projection(BW, params)
+% % ESTIMATE_SKEW_PROJECTION
+% % CAPTCHA-robust skew estimation using projection variance
+% 
+%     angleRange = params.skew_angleRange;
+%     angleStep  = params.skew_angleStep;
+% 
+%     angles = -angleRange:angleStep:angleRange;
+%     scores = zeros(size(angles));
+% 
+%     BW = logical(BW);
+% 
+%     for k = 1:numel(angles)
+%         BWrot = imrotate(BW, angles(k), 'bilinear', 'crop');
+% 
+%         % Horizontal projection profile
+%         proj = sum(BWrot, 2);
+% 
+%         % Variance measures alignment sharpness
+%         scores(k) = var(proj);
+%     end
+% 
+%     [~, idx] = max(scores);
+%     angleDeg = angles(idx);
+% end

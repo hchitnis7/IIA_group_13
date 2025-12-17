@@ -112,8 +112,9 @@ function params = default_feat_params()
     params = struct();
 
     % HOG features
-    params.hogSize     = [28 28];
-    params.hogCellSize = [7 7];
+    params.hogSize      = [32 32];
+    params.hogCellSize  = [6 6];
+    params.hogNumBins   = 9;
 
     % Digit slicing / slot mapping
     params.maxSlots      = 4;
@@ -129,25 +130,35 @@ end
 %% ------------HOG Extraction Helper------------
 
 function x = hog_from_patch(patch, params)
+
     patch = logical(patch);
     patch = trimBinary(patch);
+
     if isempty(patch) || ~any(patch(:))
         dummy = false(params.hogSize);
-        x = extractHOGFeatures(dummy, 'CellSize', params.hogCellSize);
+        x = extractHOGFeatures( ...
+            dummy, ...
+            'CellSize', params.hogCellSize, ...
+            'NumBins',  params.hogNumBins);
         x(:) = 0;
         return;
     end
+
     im = imresize(patch, params.hogSize, 'nearest');
-    x = extractHOGFeatures(im, 'CellSize', params.hogCellSize);
+
+    x = extractHOGFeatures( ...
+        im, ...
+        'CellSize', params.hogCellSize, ...
+        'NumBins',  params.hogNumBins);
 end
 
 
 %% ------------Feature length helper------------
-
 function featLen = get_featLen(params)
     dummy = false(params.hogSize);
-    featLen = numel(extractHOGFeatures(dummy,'CellSize',params.hogCellSize));
+    featLen = numel(extractHOGFeatures(dummy, 'CellSize', params.hogCellSize,'NumBins',  params.hogNumBins));
 end
+
 
 
 %% ------------Utility: Trim binary patch------------
