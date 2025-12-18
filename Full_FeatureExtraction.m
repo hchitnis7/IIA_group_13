@@ -43,14 +43,61 @@ function [X4, patches4, info] = Full_FeatureExtraction(I, params)
 
     bboxW = x2 - x1 + 1;
     bboxH = y2 - y1 + 1;
+    % ------------Digit count with consistency check------------
 
-    isFour = bboxW > params.BBOXW_THRESH;
-    nDigits = params.minDigits + isFour;
+% Method 1: width-based
+isFour_width = bboxW > params.BBOXW_THRESH;
 
-    info.bboxW   = bboxW;
-    info.bboxH   = bboxH;
-    info.isFour  = isFour;
-    info.nDigits = nDigits;
+% Method 2: aspect-ratio-based (data-driven)
+aspectRatio = bboxW / bboxH;
+AR_THRESH   = 1.89;   % from your analysis
+isFour_ar   = aspectRatio >= AR_THRESH;
+
+% Consistency logic
+if ~isFour_width && isFour_ar
+    % Width says 3, AR says 4 → trust AR (safer)
+    isFour = true;
+else
+    isFour = isFour_width;
+end
+
+nDigits = params.minDigits + isFour;
+
+% Diagnostics
+info.nDigits       = nDigits;
+info.isFour_width  = isFour_width;
+info.isFour_ar     = isFour_ar;
+info.aspectRatio   = aspectRatio;
+
+
+   % % ------------Digit count: AR primary, width verification------------
+   % 
+   %  aspectRatio = bboxW / bboxH;
+   %  AR_THRESH   = 1.89;   % data-driven
+   % 
+   %  % Primary decision: Aspect Ratio
+   %  isFour_ar = aspectRatio >= AR_THRESH;
+   % 
+   %  % Width-based verification
+   %  isFour_width = bboxW > params.BBOXW_THRESH;
+   % 
+   %  % Verification logic
+   %  if ~isFour_ar && isFour_width
+   %      % AR says 3, width says 4 → promote to 4
+   %      isFour = true;
+   %  else
+   %      % Trust aspect ratio
+   %      isFour = isFour_ar;
+   %  end
+   % 
+   %  nDigits = params.minDigits + isFour;
+   % 
+   %  % Diagnostics
+   %  info.nDigits       = nDigits;
+   %  info.isFour_ar     = isFour_ar;
+   %  info.isFour_width = isFour_width;
+   %  info.aspectRatio  = aspectRatio;
+
 
    
     BWseg = BWfull(y1:y2, x1:x2);

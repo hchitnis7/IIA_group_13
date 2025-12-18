@@ -21,6 +21,7 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
         G = I;
     end
     G = im2double(G);
+    
 
     %% 2) FFT + magnitude
     F  = fft2(G);
@@ -37,17 +38,17 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
 
     peaks = [pA; pA_sym];
 
-    % %% 3b) Second symmetric FFT peak (optional)
-    % v = pA - [cx cy];
-    % [pB, pB_sym, found2] = find_second_pair_on_line( ...
-    %     Mag, cx, cy, v, params.r_min, params.r_max, peaks);
-    % 
-    % if found2
-    %     peaks = [peaks; pB; pB_sym];
-    % end
-    % 
-    % info.fftPeaks = peaks;
-    % info.nFFTpeaks = size(peaks,1);
+    %% 3b) Second symmetric FFT peak (optional)
+    v = pA - [cx cy];
+    [pB, pB_sym, found2] = find_second_pair_on_line( ...
+        Mag, cx, cy, v, params.r_min, params.r_max, peaks);
+
+    if found2
+        peaks = [peaks; pB; pB_sym];
+    end
+
+    info.fftPeaks = peaks;
+    info.nFFTpeaks = size(peaks,1);
 
     %% 4) Apply notch filter
     mask = true(H,W);
@@ -57,17 +58,29 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
     Gclean = real(ifft2(ifftshift(Fs_filt)));
     Gclean = mat2gray(Gclean);
 
+    % contrast boost
+    Gclean = imadjust(Gclean);
+
     %% 5) Spatial smoothing
-    Gclean = imgaussfilt(Gclean, params.sigma);
+    Gclean = medfilt2(Gclean, [params.med_size params.med_size]);
+    % Gclean = imgaussfilt(Gclean, params.sigma);
 
     %% 6) Otsu threshold
     BW = imbinarize(Gclean, graythresh(Gclean));
 
-    %% 7) Morphology (your logic)
+    %% 7) Morphology 
     BW = ~BW;
     BW = imerode(BW, strel('disk', params.erodeDisk));
     BW = bwareaopen(BW, params.areaOpen1);
     BW = imdilate(BW, strel('disk', params.dilateDisk));
+
+    %% 9) Distance-transform pruning (remove thin protrusions)
+    D = bwdist(~BW);   % distance to background
+
+    % % Threshold: remove pixels too far from main strokes
+    % dtThresh = 1.7;
+    % 
+    % BW = BW & (D >= dtThresh);
 
     %% 8) Enforce 8-connected foreground
     CC = bwconncomp(BW, 8);
@@ -84,6 +97,9 @@ function [BWfull, Gclean, info] = preprocessCaptcha(I, params)
 
     BWfull = false(size(BW));
     BWfull(cat(1, CC.PixelIdxList{keepIdx})) = true;
+
+    
+
 
     %% Final close
     BWfull = imclose(BWfull, strel('disk', params.closeDisk));
@@ -114,19 +130,20 @@ function params = default_preproc_params()
     params.notchRadius = 2;
 
     % Smoothing
-    params.sigma = 0.25;
+    params.sigma = 0.15;
+    params.med_size = 2;
 
     % Morphology
-    params.erodeDisk  = 3;
-    params.dilateDisk = 1;
+    params.erodeDisk  =3;
+    params.dilateDisk = 2;
     params.closeDisk  = 1;
 
     params.areaOpen1     = 150;
     params.minDigitArea  = 200;
 
-    % Deskew (projection-based)
-    params.skew_angleRange = 50;    % degrees
-    params.skew_angleStep  = 1;  % degrees
+    % % Deskew (projection-based)
+    % params.skew_angleRange = 50;    % degrees
+    % params.skew_angleStep  = 1;  % degrees
 
     % Digit slicing / layout
     params.maxSlots        = 4;      % always output 4 slots
